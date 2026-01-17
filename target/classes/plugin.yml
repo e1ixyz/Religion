@@ -1,0 +1,14 @@
+name: Religion
+main: com.elimcgehee.religion.ReligionPlugin
+version: 1.0.0
+api-version: 1.21
+author: elimcgehee
+softdepend:
+  - PlaceholderAPI
+commands:
+  pray:
+    description: Start a prayer.
+    usage: /pray
+  prayer:
+    description: Prayer info and leaderboard.
+    usage: /prayer <leaderboard|lb>

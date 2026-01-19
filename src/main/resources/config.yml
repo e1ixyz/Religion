@@ -1,0 +1,11 @@
+messages:
+  only_players: "&cOnly players can pray."
+  prayer_usage: "&cUsage: /prayer leaderboard"
+  already_praying: "&eYou are already praying."
+  cooldown: "&cYou may not pray again today."
+  interrupted: "&cYou interrupted your prayer. God is furious. You may not pray again today."
+  completed: "&aGot is pleased with you. +1 prayer point"
+  leaderboard_empty: "&7No prayers recorded yet."
+  leaderboard_header: "&6Prayer Leaderboard:"
+  leaderboard_entry: "&e{rank}. &f{name} &7- &b{points}"
+  bossbar_title: "&fPrayer - {seconds}s"

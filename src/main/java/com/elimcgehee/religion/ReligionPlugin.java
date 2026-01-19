@@ -1,6 +1,7 @@
 package com.elimcgehee.religion;
 
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
@@ -39,6 +40,8 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
         if (!getDataFolder().exists()) {
             getDataFolder().mkdirs();
         }
+
+        saveDefaultConfig();
 
         dataStore = new PrayerDataStore(getDataFolder(), getLogger());
         dataStore.load();
@@ -100,7 +103,7 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
                              @NotNull String[] args) {
         if (command.getName().equalsIgnoreCase("pray")) {
             if (!(sender instanceof Player player)) {
-                sender.sendMessage("Only players can pray.");
+                sendMessage(sender, "messages.only_players", "Only players can pray.");
                 return true;
             }
             handlePrayCommand(player);
@@ -109,7 +112,7 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
 
         if (command.getName().equalsIgnoreCase("prayer")) {
             if (args.length == 0) {
-                sender.sendMessage("Usage: /prayer leaderboard");
+                sendMessage(sender, "messages.prayer_usage", "Usage: /prayer leaderboard");
                 return true;
             }
             String sub = args[0].toLowerCase();
@@ -117,7 +120,7 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
                 sendLeaderboard(sender);
                 return true;
             }
-            sender.sendMessage("Usage: /prayer leaderboard");
+            sendMessage(sender, "messages.prayer_usage", "Usage: /prayer leaderboard");
             return true;
         }
 
@@ -147,18 +150,21 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
     private void handlePrayCommand(Player player) {
         UUID uuid = player.getUniqueId();
         if (activePrayers.containsKey(uuid)) {
-            player.sendMessage("You are already praying.");
+            sendMessage(player, "messages.already_praying", "You are already praying.");
             return;
         }
 
         if (isOnCooldown(uuid)) {
-            player.sendMessage("You may not pray again today.");
+            sendMessage(player, "messages.cooldown", "You may not pray again today.");
             return;
         }
 
         dataStore.setName(uuid, player.getName());
 
-        BossBar bossBar = Bukkit.createBossBar("Prayer - " + PRAYER_DURATION_SECONDS + "s", BarColor.WHITE,
+        BossBar bossBar = Bukkit.createBossBar(
+                formatMessage("messages.bossbar_title", "Prayer - {seconds}s",
+                        "{seconds}", String.valueOf(PRAYER_DURATION_SECONDS)),
+                BarColor.WHITE,
                 BarStyle.SOLID);
         bossBar.addPlayer(player);
         bossBar.setProgress(1.0);
@@ -185,7 +191,8 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
                 }
                 double progress = remaining / (double) PRAYER_DURATION_SECONDS;
                 current.bossBar.setProgress(Math.max(0.0, Math.min(1.0, progress)));
-                current.bossBar.setTitle("Prayer - " + remaining + "s");
+                current.bossBar.setTitle(formatMessage("messages.bossbar_title", "Prayer - {seconds}s",
+                        "{seconds}", String.valueOf(remaining)));
                 current.remainingSeconds--;
             }
         }.runTaskTimer(this, 0L, 20L);
@@ -205,7 +212,8 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
         dataStore.setCooldownUntil(player.getUniqueId(), until);
         dataStore.save();
 
-        player.sendMessage("You interrupted your prayer. God is furious. You may not pray again today.");
+        sendMessage(player, "messages.interrupted",
+                "You interrupted your prayer. God is furious. You may not pray again today.");
         Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "smite " + player.getName());
     }
 
@@ -220,7 +228,7 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
         dataStore.setName(player.getUniqueId(), player.getName());
         dataStore.save();
 
-        player.sendMessage("Got is pleased with you. +1 prayer point");
+        sendMessage(player, "messages.completed", "Got is pleased with you. +1 prayer point");
     }
 
     private boolean isOnCooldown(UUID uuid) {
@@ -239,13 +247,16 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
     private void sendLeaderboard(CommandSender sender) {
         List<PrayerDataStore.LeaderboardEntry> entries = dataStore.getTop(5);
         if (entries.isEmpty()) {
-            sender.sendMessage("No prayers recorded yet.");
+            sendMessage(sender, "messages.leaderboard_empty", "No prayers recorded yet.");
             return;
         }
-        sender.sendMessage("Prayer Leaderboard:");
+        sendMessage(sender, "messages.leaderboard_header", "Prayer Leaderboard:");
         int index = 1;
         for (PrayerDataStore.LeaderboardEntry entry : entries) {
-            sender.sendMessage(index + ". " + entry.name() + " - " + entry.points());
+            sender.sendMessage(formatMessage("messages.leaderboard_entry", "{rank}. {name} - {points}",
+                    "{rank}", String.valueOf(index),
+                    "{name}", entry.name(),
+                    "{points}", String.valueOf(entry.points())));
             index++;
         }
     }
@@ -276,5 +287,34 @@ public class ReligionPlugin extends JavaPlugin implements Listener, CommandExecu
             }
             bossBar.removeAll();
         }
+    }
+
+    private void sendMessage(CommandSender sender, String path, String fallback) {
+        String message = getMessage(path, fallback);
+        if (!message.isEmpty()) {
+            sender.sendMessage(message);
+        }
+    }
+
+    private String formatMessage(String path, String fallback, String... replacements) {
+        String message = getConfig().getString(path, fallback);
+        if (message == null) {
+            message = fallback;
+        }
+        for (int i = 0; i + 1 < replacements.length; i += 2) {
+            message = message.replace(replacements[i], replacements[i + 1]);
+        }
+        return colorize(message);
+    }
+
+    private String getMessage(String path, String fallback) {
+        return colorize(getConfig().getString(path, fallback));
+    }
+
+    private String colorize(String message) {
+        if (message == null) {
+            return "";
+        }
+        return ChatColor.translateAlternateColorCodes('&', message);
     }
 }
